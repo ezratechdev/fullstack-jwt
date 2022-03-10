@@ -15,6 +15,10 @@ const userSchema = new mongoose.Schema({
         type:String,
         required:[true,"A password is required"],
     },
+    isEmailVerified:{
+        type:Boolean,
+        required:[true,'Email verification status required'],
+    }
 },{timestamps:true});
 
 

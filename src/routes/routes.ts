@@ -1,6 +1,7 @@
 import express , {Request , Response} from "express"
 import expressAsyncHandler from "express-async-handler";
 import goalModel from "../schemas/goal";
+import UserModel from "../schemas/users";
 import {ProtectRoute} from "../components/Auth";
 
 // consts
@@ -45,26 +46,50 @@ Router.get("/:id" ,ProtectRoute , expressAsyncHandler(async(req:Request , res:Re
 }))
 
 // patch specific data
-Router.patch("/:id" , ProtectRoute, expressAsyncHandler(async(req:Request , res:Response)=>{
+Router.patch("/:id" , ProtectRoute, expressAsyncHandler(async(req:any , res:Response)=>{
     const { id } = req.params;
     const { text } = req.body;
     if(!(id.length > 0 )|| !(text.length > 0)) res.status(400).json({
         status:404,
         error:true,
         environment:process.env.NODE_ENV,
-    })
+    });
+    const goal:any = goalModel.findById(id);
+    // check for user
+    const user = await UserModel.findById(req.user.id);
+    if(!user){
+        res.status(401);
+        throw new Error("User not found");
+    }
+
+    if(user.id !== goal.user.id){
+        res.status(401);
+        throw new Error("Delete not allowed");
+    }
     const updatedGoal = await goalModel.findByIdAndUpdate(id,{text},{new :true});
     res.json(updatedGoal);
 }))
 // delete specific data
-Router.delete("/:id" , ProtectRoute , expressAsyncHandler(async(req:Request , res:Response)=>{
+Router.delete("/:id" , ProtectRoute , expressAsyncHandler(async(req:any , res:Response)=>{
     const { id } = req.params;
     if(!id) res.status(400).json({
         status:404,
         error:true,
         environment:process.env.NODE_ENV,
     });
-    await goalModel.remove();
+    const goal:any = goalModel.findById(id);
+    // check for user
+    const user = await UserModel.findById(req.user.id);
+    if(!user || !goal){
+        res.status(401).json("error");
+        // throw new Error("User not found");
+    }
+
+    if(user.id !== goal.user.id){
+        res.status(401);
+        throw new Error("Delete not allowed");
+    }
+    await goal.remove();
     res.json({
         id,
     });

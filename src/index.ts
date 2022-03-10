@@ -1,9 +1,8 @@
 import express , {Request , Response} from "express";
 import Router from "./routes/routes";
 import http from "http";
-import path from "path";
 import mongoose from "mongoose";
-import userRouter from "./routes/users";
+import Auth from "./routes/Authenication";
 require("dotenv").config();
 
 
@@ -14,17 +13,10 @@ const Server = http.createServer(app);
 
 // middle wares
 app.use(express.json());
-app.use(express.static(path.join(__dirname + "/public")));
+// app.use(express.static(path.join(__dirname + "/public")));
 app.use(express.urlencoded({extended:true}));
 app.use("/path",Router);
-app.use("/users",userRouter);
-
-// get requests
-app.get("/", (req:Request , res:Response)=>{
-    res.sendFile("index.html");
-});
-
-// post requests
+app.use("/auth",Auth);
 
 // error 404
 app.use((req:Request , res:Response)=>{
