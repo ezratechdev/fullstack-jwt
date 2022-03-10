@@ -1,22 +1,32 @@
-interface errorData{
+interface responseData{
     error:boolean,
-    status?:number,
     message:string,
+    status?:number,
     token?:any,
     email?:string,
     username?:string,
-    optionalObject:{ otherData:any}
+    isEmailVerified?:boolean,
 }
-const errorFunc = ({error , status , message , token , email , username , optionalObject  }:errorData)=>{
-    return {
+const responseFunc = ({error , message , status , token , email , username , isEmailVerified  }:responseData)=>{
+    const response = 
+    {
         error,
         status,
         message,
         token,
         email,
         username,
-        optionalObject,
+        isEmailVerified,
+    }
+    return {
+        ...response.error && {error : response.error},
+        ...response.status && {status : response.status},
+        ...response.message && {message : response.message},
+        ...response.token && {token : response.token},
+        ...response.email && {email : response.email},
+        ...response.username && {username : response.username},
+        ...response.isEmailVerified && {isEmailVerified : response.isEmailVerified},
     }
 }
 
-export { errorFunc };
+export { responseFunc };

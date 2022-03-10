@@ -1,7 +1,5 @@
-import express , {Request , Response} from "express";
-import AsyncHandler from "express-async-handler";
-import MailSender from "../components/Mail";
-import { Login, ProtectRoute, ResetPassword, Signup, Verify, VerifyTokenGrab } from "../components/Auth";
+import express from "express";
+import { Login, ProtectRoute, ResetPassword, ResetPasswordTokenGrab, Signup, Verify, VerifyTokenGrab } from "../components/Auth";
 
 // constants
 const UserRouter = express.Router();
@@ -16,6 +14,10 @@ UserRouter.post("/login" , Login);
 
 // reset password
 UserRouter.post("/reset" , ResetPassword);
+
+// reset token via grab
+UserRouter.post("/reset/:id" , ResetPasswordTokenGrab);
+
 
 // verify mail
 UserRouter.get("/verify" , ProtectRoute ,Verify );
