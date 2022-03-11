@@ -7,7 +7,9 @@ import MailSender from "./Mail";
 import { responseFunc } from "./response";
 
 // to do 
-// generate different tokens for different uses ie add more data in object and use different keys
+
+// add fetch requests to html sent which will lead to redirect and pass token as a redirect
+// ensure token is not sent as a response for reset and verify
 
 
 // functions 
@@ -131,19 +133,41 @@ const ResetPassword = AsyncHandler(async (req: Request, res: Response) => {
     const { email } = req.body;
     // user node mailer
     // ensure user is among user
-    const user:any = UserModel.findOne({email});
+    const user:any = await UserModel.findOne({email}).select("-password");
     // generate token from _id
     if(!user) res.json({
         ...responseFunc({
             error:true,
-            message:`Cant send reset email to none existing user ${email}`,
+            message:`Cant send reset email to a none existing user ${email}`,
             status:400,
         }),
     });
-    const token = generateToken(user._id,'48h');
-    res.send(token);
-    // MailSender("Reset", email);
-    // res.send(`Reset email sent`)
+    const token = jwt.sign({id:user._id , operation:'reset'}, process.env.jwt_secret_reset ,{expiresIn:'48h'});
+    // add a path which when a user hits they are asked for an input
+    const html = `
+    <div>
+    <p>Hello there</p>
+    <div>
+        <p>
+            You requested for a password reset use the link below to do so
+        </p>
+        <br>
+        <p>
+        ${token}
+        <a href="localhost:5000/auth/reset/${token}">Reset password</a>
+        </p>
+        <p>Thank you for using our services</p>
+    </div>
+    </div>
+    `;
+    MailSender(html, email , "Password Reset");
+    res.json({
+        ...responseFunc({
+            error:false,
+            message:`Reset link sent to ${email}`,
+            status:200,
+        }),
+    });
 
 });
 
@@ -163,15 +187,26 @@ const ResetPasswordTokenGrab = AsyncHandler(async(req:Request , res:Response)=>{
         })
     }
 
-    const decoded:any = jwt.verify(token,process.env.jwt_secret);
+    const decoded:any = jwt.verify(token,process.env.jwt_secret_reset);
+    if(decoded.operation !== 'reset'){
+        res.json({
+            ...responseFunc({
+                error:true,
+                message:`Token passed is invalid for this operation`,
+                status:401,
+            })
+        })
+    }
 
     const user = await UserModel.findById(decoded.id).select("-password");
     if(!user) res.json({
         ...responseFunc({
             error:true,
-            message:`User not found or token not passed`,
+            message:`User not found`,
             status:400,
         }),
+        id:decoded.id,
+        operation:decoded.operation,
     });
 
     const salt = await bcrypt.genSalt(10);
@@ -196,12 +231,38 @@ const ResetPasswordTokenGrab = AsyncHandler(async(req:Request , res:Response)=>{
 // protected auth routes 
 
 const Verify = AsyncHandler(async (req: any, res: Response) => {
+    if(!(req.user)) res.json({
+        ...responseFunc({
+            error:true,
+            message:`Could not find authorized user`,
+            status:400,
+        })
+    })
     const { email, _id } = req.user;
 
-    const verificationToken = generateToken(_id, '48h');
+    // 
+    const verificationToken = jwt.sign({id:_id , operation:'verify'}, process.env.jwt_secret_verify , {expiresIn:'48h'});
     const verificationTokenLink = `localhost:5000/users/${verificationToken}`;
     const verifyHtml = `<p>${verificationTokenLink}</p>`
-    MailSender(`${verifyHtml}`, email);
+    // introduce fetch via script
+    const html = `
+    <div>
+    <p>Hello there</p>
+    <div>
+        <p>
+            Kindly use the link below to verify your email
+        </p>
+        <br>
+        <p> 
+        ${verificationToken}
+        <a href="localhost:data"></a>
+        </p>
+        <p>We will reply shortly</p>
+    </div>
+    <p style="color: red;">Thank you for choosing us</p>
+    </div>
+    `;
+    MailSender(`${html}`, email , "Email verification");
 
     res.json({
         ...responseFunc({
@@ -214,11 +275,22 @@ const Verify = AsyncHandler(async (req: any, res: Response) => {
 
 const VerifyTokenGrab = AsyncHandler(async (req: Request, res: Response) => {
     const { token } = req.params;
-    const decodedToken = jwt.verify(token, process.env.jwt_secret);
-    const id = decodedToken.id;
+    const decodedToken = jwt.verify(token, process.env.jwt_secret_verify);
+    const {id , operation} = decodedToken;
+    if(operation !== 'verify') res.json({
+        ...responseFunc({
+            error:true,
+            message:`Token not valid for this operation`,
+            status:404,
+        }),
+    })
     const user: any = await UserModel.findById(id).select("-password");
 
-    if (!user) res.json({ error: true, message: `User not found`, status: 400, id, data: "ss" });
+    if (!user) res.json({ 
+        ...responseFunc({
+            error: true, message: `User not found`, status: 400,
+        })
+     });
 
     if (user.isEmailVerified) {
         res.json({

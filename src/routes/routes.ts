@@ -1,14 +1,22 @@
-import express , {Request , Response} from "express"
+import express , { Response} from "express"
 import expressAsyncHandler from "express-async-handler";
 import goalModel from "../schemas/goal";
 import UserModel from "../schemas/users";
 import {ProtectRoute} from "../components/Auth";
+import { responseFunc } from "../components/response"
 
 // consts
 const Router = express.Router();
 
 // get
 Router.get("/" , ProtectRoute , expressAsyncHandler(async(req:any , res:Response)=>{
+    if(!req.user) res.json({
+        ...responseFunc({
+            error:true,
+            message:`User not found.Authorization to route is not valid`,
+            status:400,
+        })
+    })
     await goalModel.find({ user : req.user.id})
     .then(result=>{
         res.send(result);
@@ -22,6 +30,13 @@ Router.get("/" , ProtectRoute , expressAsyncHandler(async(req:any , res:Response
 
 
 Router.post("/" ,ProtectRoute , expressAsyncHandler(async(req:any , res:Response)=>{
+    if(!req.user) res.json({
+        ...responseFunc({
+            error:true,
+            message:`User not found.Authorization to route is not valid`,
+            status:400,
+        })
+    })
     const { text } = req.body;
     if(!text) res.status(400).json({
         status:404,
@@ -35,7 +50,14 @@ Router.post("/" ,ProtectRoute , expressAsyncHandler(async(req:any , res:Response
     res.json(goal);
 }))
 // get specific data
-Router.get("/:id" ,ProtectRoute , expressAsyncHandler(async(req:Request , res:Response)=>{
+Router.get("/:id" ,ProtectRoute , expressAsyncHandler(async(req:any , res:Response)=>{
+    if(!req.user) res.json({
+        ...responseFunc({
+            error:true,
+            message:`User not found.Authorization to route is not valid`,
+            status:400,
+        })
+    })
     const { id } = req.params;
     if(!id) res.status(400).json({
         status:404,
@@ -47,6 +69,13 @@ Router.get("/:id" ,ProtectRoute , expressAsyncHandler(async(req:Request , res:Re
 
 // patch specific data
 Router.patch("/:id" , ProtectRoute, expressAsyncHandler(async(req:any , res:Response)=>{
+    if(!req.user) res.json({
+        ...responseFunc({
+            error:true,
+            message:`User not found.Authorization to route is not valid`,
+            status:400,
+        })
+    })
     const { id } = req.params;
     const { text } = req.body;
     if(!(id.length > 0 )|| !(text.length > 0)) res.status(400).json({
@@ -71,6 +100,13 @@ Router.patch("/:id" , ProtectRoute, expressAsyncHandler(async(req:any , res:Resp
 }))
 // delete specific data
 Router.delete("/:id" , ProtectRoute , expressAsyncHandler(async(req:any , res:Response)=>{
+    if(!req.user) res.json({
+        ...responseFunc({
+            error:true,
+            message:`User not found.Authorization to route is not valid`,
+            status:400,
+        })
+    })
     const { id } = req.params;
     if(!id) res.status(400).json({
         status:404,

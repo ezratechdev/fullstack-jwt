@@ -27,6 +27,7 @@ UserRouter.get("/verify/:token" , VerifyTokenGrab);
 
 // protected route test
 UserRouter.get("/text" , ProtectRoute , (req:any , res)=>{
+    if(!req.user) res.json({error:true , message:"user not found" , status:404});
     const {username , email ,_id } = req.user;
     res.json({username , email , _id});
 });
