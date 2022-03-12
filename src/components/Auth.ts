@@ -12,7 +12,7 @@ import { responseFunc } from "./response";
 // ensure token is not sent as a response for reset and verify
 
 
-// functions 
+// function to generate token for login and signup
 const generateToken = (id: any, expiresin) => {
     return jwt.sign({ id , operation:'auth' }, process.env.jwt_secret, { expiresIn: `${expiresin}` });
 }
@@ -53,7 +53,7 @@ const Login = AsyncHandler(async (req: Request, res: Response) => {
     const { email, password } = req.body;
     if (!(email && password)) res.json({
         error: true,
-        message: `Invalid credentials sent`,
+        message: `Email and password not sent`,
         status: 400,
     });
     const user = await UserModel.findOne({ email });
@@ -74,7 +74,7 @@ const Login = AsyncHandler(async (req: Request, res: Response) => {
     } else res.json({
         error: true,
         status: 400,
-        message: `Invalid password or email.Try again`,
+        message: `Invalid password.Try again`,
     })
 })
 const Signup = AsyncHandler(async (req: Request, res: Response) => {
@@ -122,7 +122,7 @@ const Signup = AsyncHandler(async (req: Request, res: Response) => {
     res.json({
         ...responseFunc({
             error: true,
-            message: `Faced an error creating user check on your network and try again`,
+            message: `Faced an error creating user , kindly try again`,
             status: 400,
         }),
     });
@@ -154,6 +154,7 @@ const ResetPassword = AsyncHandler(async (req: Request, res: Response) => {
         <br>
         <p>
         ${token}
+        <br/>
         <a href="localhost:5000/auth/reset/${token}">Reset password</a>
         </p>
         <p>Thank you for using our services</p>
@@ -198,16 +199,24 @@ const ResetPasswordTokenGrab = AsyncHandler(async(req:Request , res:Response)=>{
         })
     }
 
-    const user = await UserModel.findById(decoded.id).select("-password");
+    const user = await UserModel.findById(decoded.id);
     if(!user) res.json({
         ...responseFunc({
             error:true,
             message:`User not found`,
             status:400,
         }),
-        id:decoded.id,
-        operation:decoded.operation,
     });
+
+    if((await bcrypt.compare(password , user.password))){
+        res.json({
+            ...responseFunc({
+                error:true,
+                message:`Could not update password , choose another password`,
+                status:400,
+            })
+        })
+    }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password,salt);
@@ -243,7 +252,6 @@ const Verify = AsyncHandler(async (req: any, res: Response) => {
     // 
     const verificationToken = jwt.sign({id:_id , operation:'verify'}, process.env.jwt_secret_verify , {expiresIn:'48h'});
     const verificationTokenLink = `localhost:5000/users/${verificationToken}`;
-    const verifyHtml = `<p>${verificationTokenLink}</p>`
     // introduce fetch via script
     const html = `
     <div>
@@ -257,7 +265,6 @@ const Verify = AsyncHandler(async (req: any, res: Response) => {
         ${verificationToken}
         <a href="localhost:data"></a>
         </p>
-        <p>We will reply shortly</p>
     </div>
     <p style="color: red;">Thank you for choosing us</p>
     </div>
@@ -308,7 +315,6 @@ const VerifyTokenGrab = AsyncHandler(async (req: Request, res: Response) => {
         ...responseFunc({
             error: false,
             isEmailVerified: verifiedUser.isEmailVerified,
-            email: verifiedUser.email,
             message: `User with email ${verifiedUser.email} is now verified`,
         })
     })
